@@ -42,7 +42,7 @@
         }
 
         #sidebar {
-            width: 450px;
+            width: 400px;
             background-color: var(--panel-bg);
             padding: 20px;
             overflow-y: auto;
@@ -99,6 +99,7 @@
             line-height: 1.5;
         }
 
+        /* --- Media Queries para hacer el diseño responsivo en celulares --- */
         @media (max-width: 900px) {
             body {
                 flex-direction: column;
@@ -126,25 +127,29 @@
 
     <div id="sidebar">
         <h1>Sistema Solar Numérico</h1>
-        <p class="explanation">Simulación interactiva basada en la integración de la Segunda Ley de Newton y la Ley de Gravitación Universal.</p>
+        <p class="explanation">Simulación interactiva basada en la integración de la Segunda Ley de Newton y la Ley de Gravitación Universal (Euler-Cromer).</p>
 
         <div class="control-panel">
-            <h2>Modos Analíticos</h2>
+            <h2>Modos Analíticos (Leyes de Kepler)</h2>
             <button class="btn" id="btn-ley1" onclick="toggleLey(1)">1ra Ley: Órbitas Elípticas</button>
+            <p class="explanation" id="exp-ley1" style="display:none;">Observa cómo las trayectorias no son círculos perfectos. El Sol ocupa uno de los focos de la elipse. Presta especial atención al cometa Halley (trazo blanco).</p>
+
             <button class="btn" id="btn-ley2" onclick="toggleLey(2)">2da Ley: Áreas Iguales</button>
-            <button class="btn active" id="btn-ley3" onclick="toggleLey(3)">3ra Ley: Periodos y Distancias</button>
+            <p class="explanation" id="exp-ley2" style="display:none;">Se dibujan cuñas de área correspondientes a intervalos de tiempo idénticos para el cometa. Notarás que viaja mucho más rápido cerca del Sol (perihelio) para conservar el momento angular.</p>
+
+            <button class="btn" id="btn-ley3" onclick="toggleLey(3)">3ra Ley: Periodos y Distancias</button>
+            <p class="explanation" id="exp-ley3" style="display:none;">La tabla inferior calcula en tiempo real la relación T²/a³. Físicamente, esta constante equivale a 4π²/(GM).</p>
         </div>
 
         <div class="control-panel">
-            <h2>Telemetría (Equivalencia Sistema Internacional)</h2>
-            <p class="explanation" style="font-size: 0.75rem; margin-bottom: 5px;">* Los datos de píxeles se convierten en vivo usando un factor de escala para coincidir con la constante astronómica real de la Tabla 13.2.</p>
+            <h2>Telemetría (Tercera Ley)</h2>
             <table id="telemetry-table">
                 <thead>
                     <tr>
                         <th>Cuerpo</th>
                         <th>Semieje (a)</th>
                         <th>Periodo (T)</th>
-                        <th>T² / a³ (s²/m³)</th>
+                        <th>T² / a³</th>
                     </tr>
                 </thead>
                 <tbody id="telemetry-body">
@@ -168,7 +173,7 @@
         const M_sun = 10000;
         const dt = 0.05; 
 
-        // Rmin y rmax para cálculo de elipses
+        // Adición de rmin y rmax para el cálculo preciso del semieje mayor
         let bodies = [
             { name: "Mercurio", color: "#a8a29e", r: 60,   x: cx + 60,  y: cy, vx: 0, vy: 14.0, mass: 1, radius: 3, path: [], period: 0, a: 60, timer: 0, rmin: Infinity, rmax: 0, areas: [], areaTimer: 0 },
             { name: "Venus",    color: "#fde047", r: 100,  x: cx + 100, y: cy, vx: 0, vy: 10.0, mass: 2, radius: 4, path: [], period: 0, a: 100, timer: 0, rmin: Infinity, rmax: 0, areas: [], areaTimer: 0 },
@@ -178,9 +183,9 @@
         ];
 
         function toggleLey(ley) {
-            if(ley === 1) { showLey1 = !showLey1; document.getElementById('btn-ley1').classList.toggle('active'); }
-            if(ley === 2) { showLey2 = !showLey2; document.getElementById('btn-ley2').classList.toggle('active'); bodies[4].areas = []; }
-            if(ley === 3) { showLey3 = !showLey3; document.getElementById('btn-ley3').classList.toggle('active'); }
+            if(ley === 1) { showLey1 = !showLey1; document.getElementById('btn-ley1').classList.toggle('active'); document.getElementById('exp-ley1').style.display = showLey1 ? 'block' : 'none'; }
+            if(ley === 2) { showLey2 = !showLey2; document.getElementById('btn-ley2').classList.toggle('active'); document.getElementById('exp-ley2').style.display = showLey2 ? 'block' : 'none'; bodies[4].areas = []; }
+            if(ley === 3) { showLey3 = !showLey3; document.getElementById('btn-ley3').classList.toggle('active'); document.getElementById('exp-ley3').style.display = showLey3 ? 'block' : 'none'; }
         }
 
         function updatePhysics() {
@@ -190,6 +195,7 @@
                 let distSq = dx*dx + dy*dy;
                 let dist = Math.sqrt(distSq);
 
+                // Rastrear el Periastro y Apoastro en vivo
                 if (dist < b.rmin) b.rmin = dist;
                 if (dist > b.rmax) b.rmax = dist;
 
@@ -208,9 +214,11 @@
                 if (b.y > cy && (b.y - b.vy*dt) <= cy && b.x > cx) {
                     if (b.timer > 0) {
                         b.period = b.timer;
+                        // Corrección: Cálculo real del Semieje Mayor (a)
                         b.a = (b.rmin + b.rmax) / 2; 
                     }
                     b.timer = 0;
+                    // Reiniciar rastreadores de radio para el próximo periodo orbital
                     b.rmin = Infinity;
                     b.rmax = 0;
                 }
@@ -277,31 +285,14 @@
             if (showLey3) {
                 let tbody = document.getElementById('telemetry-body');
                 tbody.innerHTML = '';
-                
-                // Constante teórica de nuestra simulación en píxeles y ticks
-                let constante_simulacion = (4 * Math.PI * Math.PI) / (G * M_sun);
-                // Constante real del libro (Sistema Internacional)
-                let constante_real_libro = 2.97e-19;
-                // Factor matemático puente entre ambos universos
-                let factor_conversion = constante_real_libro / constante_simulacion;
-
                 bodies.forEach(b => {
                     if (b.period > 0) {
-                        let t2_a3_sim = (b.period**2) / (b.a**3);
-                        
-                        // Aplicamos el factor de conversión para mostrar la lectura real
-                        let t2_a3_real = t2_a3_sim * factor_conversion;
-                        
-                        // Formateamos el texto para que se vea idéntico al libro (ej. 2.97 x 10^-19)
-                        let texto_cientifico = t2_a3_real.toExponential(2);
-                        let partes = texto_cientifico.split('e');
-                        let presentacion = `${partes[0]} &times; 10<sup>${parseInt(partes[1])}</sup>`;
-
+                        let t2_a3 = (b.period**2) / (b.a**3);
                         tbody.innerHTML += `<tr>
-                            <td style="color:${b.color}; font-weight:bold;">${b.name}</td>
-                            <td>${b.a.toFixed(1)} px</td>
-                            <td>${b.period.toFixed(1)} ticks</td>
-                            <td style="color:#4ade80;">${presentacion}</td>
+                            <td style="color:${b.color}">${b.name}</td>
+                            <td>${b.a.toFixed(0)}</td>
+                            <td>${b.period.toFixed(0)}</td>
+                            <td>${(t2_a3 * 1000).toFixed(4)} x10⁻³</td>
                         </tr>`;
                     }
                 });
