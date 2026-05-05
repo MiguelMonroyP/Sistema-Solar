@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Laboratorio Orbital: Leyes de Kepler y Gravitación</title>
     <style>
         :root {
@@ -21,6 +21,7 @@
             display: flex;
             height: 100vh;
             overflow: hidden;
+            flex-direction: row;
         }
 
         #canvas-container {
@@ -34,8 +35,10 @@
 
         canvas {
             box-shadow: 0 0 40px rgba(0,0,0,0.8);
-            border-right: 1px solid #334155;
             cursor: crosshair;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
         }
 
         #sidebar {
@@ -47,6 +50,7 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            box-sizing: border-box;
         }
 
         h1, h2, h3 { color: var(--accent); margin-top: 0; }
@@ -63,7 +67,7 @@
             background-color: var(--accent);
             color: #0f172a;
             border: none;
-            padding: 10px;
+            padding: 12px;
             font-weight: bold;
             border-radius: 5px;
             cursor: pointer;
@@ -93,6 +97,25 @@
             font-size: 0.85rem;
             color: #94a3b8;
             line-height: 1.5;
+        }
+
+        /* --- Media Queries para hacer el diseño responsivo en celulares --- */
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+                overflow-y: auto;
+                height: auto;
+            }
+            #canvas-container {
+                height: 50vh; /* El lienzo ocupará la mitad superior en móviles */
+                border-right: none;
+                border-bottom: 2px solid #334155;
+            }
+            #sidebar {
+                width: 100%;
+                height: auto;
+                border-left: none;
+            }
         }
     </style>
 </head>
@@ -130,7 +153,8 @@
                     </tr>
                 </thead>
                 <tbody id="telemetry-body">
-                    </tbody>
+                    <!-- Datos dinámicos -->
+                </tbody>
             </table>
         </div>
     </div>
@@ -146,19 +170,17 @@
         let showLey2 = false;
         let showLey3 = true;
 
-        // Parámetros Físicos del Motor (Unidades Arbitrarias para Visualización)
+        // Parámetros Físicos del Motor
         const G = 1;
         const M_sun = 10000;
-        const dt = 0.05; // Paso de integración temporal
+        const dt = 0.05; 
 
         // Definición de Cuerpos Celestes
-        // vx, vy iniciales calculadas para generar órbitas estables (v = sqrt(GM/r) para círculo)
         let bodies = [
             { name: "Mercurio", color: "#a8a29e", r: 60,   x: cx + 60,  y: cy, vx: 0, vy: 14.0, mass: 1, radius: 3, path: [], period: 0, a: 60, timer: 0 },
             { name: "Venus",    color: "#fde047", r: 100,  x: cx + 100, y: cy, vx: 0, vy: 10.0, mass: 2, radius: 4, path: [], period: 0, a: 100, timer: 0 },
             { name: "Tierra",   color: "#38bdf8", r: 150,  x: cx + 150, y: cy, vx: 0, vy: 8.16, mass: 3, radius: 5, path: [], period: 0, a: 150, timer: 0 },
             { name: "Marte",    color: "#ef4444", r: 220,  x: cx + 220, y: cy, vx: 0, vy: 6.74, mass: 2, radius: 4, path: [], period: 0, a: 220, timer: 0 },
-            // Cometa altamente excéntrico para demostrar las leyes claramente
             { name: "Cometa",   color: "#ffffff", r: 350,  x: cx + 350, y: cy, vx: 0, vy: 3.5,  mass: 0.1, radius: 2, path: [], period: 0, a: 190, timer: 0, areas: [], areaTimer: 0 }
         ];
 
@@ -170,42 +192,34 @@
 
         function updatePhysics() {
             bodies.forEach(b => {
-                // Vectores de distancia al Sol (ubicado en cx, cy)
                 let dx = cx - b.x;
                 let dy = cy - b.y;
                 let distSq = dx*dx + dy*dy;
                 let dist = Math.sqrt(distSq);
 
-                // Fuerza de Gravedad de Newton (Aceleración = GM/r^2)
                 let a_mag = (G * M_sun) / distSq;
                 
-                // Integración Numérica (Método Euler-Cromer: conserva bien la energía en órbitas)
                 b.vx += a_mag * (dx / dist) * dt;
                 b.vy += a_mag * (dy / dist) * dt;
                 b.x += b.vx * dt;
                 b.y += b.vy * dt;
 
-                // Registro de trayectoria
                 if (b.path.length === 0 || distSqToLast(b.x, b.y, b.path) > 4) {
                     b.path.push({x: b.x, y: b.y});
                     if (b.path.length > 400) b.path.shift();
                 }
 
-                // Cálculo empírico del periodo (al cruzar el eje X positivo)
                 if (b.y > cy && (b.y - b.vy*dt) <= cy && b.x > cx) {
                     if (b.timer > 0) {
                         b.period = b.timer;
-                        // Estimación de semieje mayor (a = (rmin + rmax)/2), simplificado aquí a distancia promedio de cruce
                         b.a = dist; 
                     }
                     b.timer = 0;
                 }
                 b.timer += dt;
 
-                // Lógica de barrido de áreas para el Cometa (2da Ley)
                 if (showLey2 && b.name === "Cometa") {
                     b.areaTimer += dt;
-                    // Guardar un punto cada cierto tiempo fijo para formar un triángulo (área barrida)
                     if (b.areaTimer > 30) {
                         b.areas.push({x: b.x, y: b.y});
                         if (b.areas.length > 20) b.areas.shift();
@@ -233,17 +247,15 @@
             ctx.shadowBlur = 0;
 
             bodies.forEach(b => {
-                // Dibujar Órbitas (1ra Ley)
                 if (showLey1 && b.path.length > 1) {
                     ctx.beginPath();
                     ctx.moveTo(b.path[0].x, b.path[0].y);
                     for(let i=1; i<b.path.length; i++) ctx.lineTo(b.path[i].x, b.path[i].y);
-                    ctx.strokeStyle = b.color + '40'; // Transparencia
+                    ctx.strokeStyle = b.color + '40'; 
                     ctx.lineWidth = 1;
                     ctx.stroke();
                 }
 
-                // Dibujar Áreas de Kepler (2da Ley) - Solo para el cometa
                 if (showLey2 && b.name === "Cometa" && b.areas.length > 1) {
                     for(let i=1; i<b.areas.length; i+=2) {
                         ctx.beginPath();
@@ -258,14 +270,12 @@
                     }
                 }
 
-                // Dibujar Planeta
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
                 ctx.fillStyle = b.color;
                 ctx.fill();
             });
 
-            // Actualizar Tabla Telemetría (3ra Ley)
             if (showLey3) {
                 let tbody = document.getElementById('telemetry-body');
                 tbody.innerHTML = '';
@@ -284,7 +294,7 @@
         }
 
         function loop() {
-            for(let i=0; i<4; i++) updatePhysics(); // Acelerar simulación
+            for(let i=0; i<4; i++) updatePhysics(); 
             draw();
             requestAnimationFrame(loop);
         }
