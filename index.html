@@ -177,11 +177,11 @@
 
         // Definición de Cuerpos Celestes
         let bodies = [
-            { name: "Mercurio", color: "#a8a29e", r: 60,   x: cx + 60,  y: cy, vx: 0, vy: 14.0, mass: 1, radius: 3, path: [], period: 0, a: 60, timer: 0 },
-            { name: "Venus",    color: "#fde047", r: 100,  x: cx + 100, y: cy, vx: 0, vy: 10.0, mass: 2, radius: 4, path: [], period: 0, a: 100, timer: 0 },
-            { name: "Tierra",   color: "#38bdf8", r: 150,  x: cx + 150, y: cy, vx: 0, vy: 8.16, mass: 3, radius: 5, path: [], period: 0, a: 150, timer: 0 },
-            { name: "Marte",    color: "#ef4444", r: 220,  x: cx + 220, y: cy, vx: 0, vy: 6.74, mass: 2, radius: 4, path: [], period: 0, a: 220, timer: 0 },
-            { name: "Cometa",   color: "#ffffff", r: 350,  x: cx + 350, y: cy, vx: 0, vy: 3.5,  mass: 0.1, radius: 2, path: [], period: 0, a: 190, timer: 0, areas: [], areaTimer: 0 }
+            { name: "Mercurio", color: "#a8a29e", r: 60,   x: cx + 60,  y: cy, vx: 0, vy: 14.0, mass: 1, radius: 3, path: [], period: 0, a: 60, timer: 0, rmin: Infinity, rmax: 0 },
+            { name: "Venus",    color: "#fde047", r: 100,  x: cx + 100, y: cy, vx: 0, vy: 10.0, mass: 2, radius: 4, path: [], period: 0, a: 100, timer: 0, rmin: Infinity, rmax: 0 },
+            { name: "Tierra",   color: "#38bdf8", r: 150,  x: cx + 150, y: cy, vx: 0, vy: 8.16, mass: 3, radius: 5, path: [], period: 0, a: 150, timer: 0, rmin: Infinity, rmax: 0 },
+            { name: "Marte",    color: "#ef4444", r: 220,  x: cx + 220, y: cy, vx: 0, vy: 6.74, mass: 2, radius: 4, path: [], period: 0, a: 220, timer: 0, rmin: Infinity, rmax: 0 },
+            { name: "Cometa",   color: "#ffffff", r: 350,  x: cx + 350, y: cy, vx: 0, vy: 3.5,  mass: 0.1, radius: 2, path: [], period: 0, a: 190, timer: 0, areas: [], areaTimer: 0, rmin: Infinity, rmax: 0 }
         ];
 
         function toggleLey(ley) {
@@ -196,6 +196,10 @@
                 let dy = cy - b.y;
                 let distSq = dx*dx + dy*dy;
                 let dist = Math.sqrt(distSq);
+
+// NUEVO CÓDIGO: Rastrear los extremos de la órbita en vivo
+                    if (dist < b.rmin) b.rmin = dist;
+                    if (dist > b.rmax) b.rmax = dist;
 
                 let a_mag = (G * M_sun) / distSq;
                 
@@ -212,8 +216,9 @@
                 if (b.y > cy && (b.y - b.vy*dt) <= cy && b.x > cx) {
                     if (b.timer > 0) {
                         b.period = b.timer;
-                        b.a = dist; 
-                    }
+            // CÓDIGO CORREGIDO: Promedio del Periastro y Apoastro
+                            b.a = (b.rmin + b.rmax) / 2; 
+}
                     b.timer = 0;
                 }
                 b.timer += dt;
